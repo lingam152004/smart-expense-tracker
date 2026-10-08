@@ -1,0 +1,77 @@
+{% extends "expenses/base.html" %}
+{% block title %}Expenses | Smart Expense Tracker{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+  <h1 class="h3 mb-0">Expense history</h1>
+  <a class="btn btn-primary" href="{% url 'expense_create' %}"><i class="bi bi-plus-lg"></i> Add expense</a>
+</div>
+
+<form method="get" class="card card-body mb-3">
+  <div class="row g-2 align-items-end">
+    <div class="col-md-3"><label class="form-label small">Search</label>{{ form.q }}</div>
+    <div class="col-md-3"><label class="form-label small">Category</label>{{ form.category }}</div>
+    <div class="col-md-2"><label class="form-label small">From</label>{{ form.date_from }}</div>
+    <div class="col-md-2"><label class="form-label small">To</label>{{ form.date_to }}</div>
+    <div class="col-md-2 d-flex gap-2">
+      <button class="btn btn-outline-primary flex-fill" type="submit">Filter</button>
+      <a class="btn btn-outline-secondary" href="{% url 'expense_list' %}">Reset</a>
+    </div>
+  </div>
+</form>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead><tr><th>Date</th><th>Category</th><th>Description</th><th>Payment</th><th class="text-end">Amount</th><th class="text-end">Actions</th></tr></thead>
+      <tbody>
+      {% for expense in page %}
+        <tr>
+          <td>{{ expense.date|date:"d M Y" }}</td>
+          <td><span class="badge text-bg-light border">{{ expense.category }}</span></td>
+          <td>{{ expense.description|default:"-" }}</td>
+          <td>{{ expense.payment_method }}</td>
+          <td class="text-end">₹{{ expense.amount|floatformat:2 }}</td>
+          <td class="text-end text-nowrap">
+            <a class="btn btn-sm btn-outline-secondary" href="{% url 'expense_detail' expense.pk %}" aria-label="View"><i class="bi bi-eye"></i></a>
+            <a class="btn btn-sm btn-outline-primary" href="{% url 'expense_update' expense.pk %}" aria-label="Edit"><i class="bi bi-pencil"></i></a>
+            <button class="btn btn-sm btn-outline-danger" type="button" data-bs-toggle="modal" data-bs-target="#deleteModal"
+                    data-action="{% url 'expense_delete' expense.pk %}" aria-label="Delete"><i class="bi bi-trash"></i></button>
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="6" class="text-center text-muted py-4">No expenses found. <a href="{% url 'expense_create' %}">Add your first expense</a>.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if page.has_other_pages %}
+<nav class="mt-3" aria-label="Pagination">
+  <ul class="pagination justify-content-center">
+    {% if page.has_previous %}<li class="page-item"><a class="page-link" href="?{% if query_string %}{{ query_string }}&{% endif %}page={{ page.previous_page_number }}">Previous</a></li>{% endif %}
+    <li class="page-item disabled"><span class="page-link">Page {{ page.number }} of {{ page.paginator.num_pages }}</span></li>
+    {% if page.has_next %}<li class="page-item"><a class="page-link" href="?{% if query_string %}{{ query_string }}&{% endif %}page={{ page.next_page_number }}">Next</a></li>{% endif %}
+  </ul>
+</nav>
+{% endif %}
+
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+    <div class="modal-header"><h5 class="modal-title" id="deleteModalLabel">Delete expense</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+    <div class="modal-body">This expense will be permanently deleted.</div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+      <form method="post" id="deleteForm">{% csrf_token %}<button type="submit" class="btn btn-danger">Delete</button></form>
+    </div>
+  </div></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.getElementById('deleteModal').addEventListener('show.bs.modal', function (event) {
+    document.getElementById('deleteForm').action = event.relatedTarget.getAttribute('data-action');
+  });
+</script>
+{% endblock %}

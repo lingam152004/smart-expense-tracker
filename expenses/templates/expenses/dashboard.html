@@ -1,0 +1,133 @@
+{% extends "expenses/base.html" %}
+{% load static %}
+{% block title %}Dashboard | Smart Expense Tracker{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+  <div>
+    <h1 class="h3 mb-0">Dashboard</h1>
+    <p class="text-muted mb-0">{{ summary.month_label }}</p>
+  </div>
+  <a class="btn btn-primary" href="{% url 'expense_create' %}"><i class="bi bi-plus-lg"></i> Add expense</a>
+</div>
+
+{% if summary.alert %}
+<div class="alert alert-{{ summary.alert.level }}" role="alert">
+  <i class="bi bi-exclamation-triangle-fill"></i> {{ summary.alert.message }}
+</div>
+{% endif %}
+
+<div class="row g-3 mb-4">
+  <div class="col-6 col-lg">
+    <div class="card stat-card h-100"><div class="card-body">
+      <div class="stat-label">Spent this month</div>
+      <div class="stat-value">₹{{ summary.total_this_month|floatformat:2 }}</div>
+    </div></div>
+  </div>
+  <div class="col-6 col-lg">
+    <div class="card stat-card h-100"><div class="card-body">
+      <div class="stat-label">Monthly budget</div>
+      <div class="stat-value">{% if summary.has_budget %}₹{{ summary.budget|floatformat:2 }}{% else %}<a href="{% url 'budget_manage' %}" class="fs-6">Set budget</a>{% endif %}</div>
+    </div></div>
+  </div>
+  <div class="col-6 col-lg">
+    <div class="card stat-card h-100"><div class="card-body">
+      <div class="stat-label">Remaining</div>
+      <div class="stat-value">{% if summary.has_budget %}₹{{ summary.remaining|floatformat:2 }}{% else %}-{% endif %}</div>
+    </div></div>
+  </div>
+  <div class="col-6 col-lg">
+    <div class="card stat-card h-100"><div class="card-body">
+      <div class="stat-label">Average per day</div>
+      <div class="stat-value">₹{{ summary.average_daily|floatformat:2 }}</div>
+    </div></div>
+  </div>
+  <div class="col-12 col-lg">
+    <div class="card stat-card h-100"><div class="card-body">
+      <div class="stat-label">Predicted next month</div>
+      {% if summary.prediction.success %}
+        <div class="stat-value">₹{{ summary.prediction.predicted_amount|floatformat:2 }}</div>
+        <div class="small text-muted">{{ summary.prediction.next_month_label }}</div>
+      {% else %}
+        <div class="small text-muted mt-1">{{ summary.prediction.message }}</div>
+      {% endif %}
+    </div></div>
+  </div>
+</div>
+
+{% if summary.has_budget %}
+<div class="card mb-4"><div class="card-body">
+  <div class="d-flex justify-content-between mb-1">
+    <span class="fw-semibold">Budget used</span><span>{{ summary.percent_used }}%</span>
+  </div>
+  <div class="progress" role="progressbar" aria-valuenow="{{ summary.percent_used }}" aria-valuemin="0" aria-valuemax="100">
+    <div class="progress-bar {% if summary.percent_used >= 100 %}bg-danger{% elif summary.percent_used >= 75 %}bg-warning{% else %}bg-success{% endif %}"
+         style="width: {% if summary.percent_used > 100 %}100{% else %}{{ summary.percent_used }}{% endif %}%"></div>
+  </div>
+</div></div>
+{% endif %}
+
+<div class="row g-3 mb-4">
+  <div class="col-lg-4">
+    <div class="card h-100"><div class="card-body">
+      <h2 class="h6">Spending by category (this month)</h2>
+      <div class="chart-box"><canvas id="categoryChart"></canvas></div>
+      <p class="small text-muted mt-2 mb-0 d-none" id="categoryEmpty">No expenses this month yet.</p>
+    </div></div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card h-100"><div class="card-body">
+      <h2 class="h6">Monthly spending</h2>
+      <div class="chart-box"><canvas id="monthlyChart"></canvas></div>
+    </div></div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card h-100"><div class="card-body">
+      <h2 class="h6">Spending trend</h2>
+      <div class="chart-box"><canvas id="trendChart"></canvas></div>
+    </div></div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card h-100"><div class="card-body">
+      <h2 class="h6">Insights</h2>
+      <ul class="mb-0 insight-list">
+        {% for message in insights.messages %}<li>{{ message }}</li>{% endfor %}
+      </ul>
+    </div></div>
+  </div>
+  <div class="col-lg-5">
+    <div class="card h-100"><div class="card-body">
+      <h2 class="h6">Key numbers</h2>
+      <dl class="row mb-0 small">
+        <dt class="col-7">Highest category</dt>
+        <dd class="col-5 text-end">{% if insights.highest_category %}{{ insights.highest_category.name }}{% else %}-{% endif %}</dd>
+        <dt class="col-7">Lowest category</dt>
+        <dd class="col-5 text-end">{% if insights.lowest_category %}{{ insights.lowest_category.name }}{% else %}-{% endif %}</dd>
+        <dt class="col-7">Change vs last month</dt>
+        <dd class="col-5 text-end">{% if insights.month_over_month_change is not None %}{{ insights.month_over_month_change }}%{% else %}-{% endif %}</dd>
+        <dt class="col-7">Average monthly spending</dt>
+        <dd class="col-5 text-end">₹{{ insights.average_monthly_spending|floatformat:2 }}</dd>
+        <dt class="col-7">Average daily spending</dt>
+        <dd class="col-5 text-end">₹{{ insights.average_daily_spending|floatformat:2 }}</dd>
+        <dt class="col-7">Budget utilization</dt>
+        <dd class="col-5 text-end">{{ insights.budget_utilization }}%</dd>
+      </dl>
+      {% if summary.prediction.success %}
+      <hr>
+      <p class="small text-muted mb-0">
+        Prediction uses {{ summary.prediction.months_used }} months of data.
+        {% if summary.prediction.mae is not None %}On the most recent month it was tested against, the estimate was off by about ₹{{ summary.prediction.mae|floatformat:2 }}.{% else %}Not enough months to test it yet (6 needed).{% endif %}
+        {{ summary.prediction.message }}
+      </p>
+      {% endif %}
+    </div></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script src="{% static 'expenses/js/dashboard.js' %}"></script>
+{% endblock %}

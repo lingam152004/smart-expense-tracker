@@ -1,0 +1,17 @@
+{% extends "expenses/base.html" %}
+{% block title %}Log in | Smart Expense Tracker{% endblock %}
+{% block content %}
+<div class="row justify-content-center"><div class="col-md-6 col-lg-4">
+  <h1 class="h3 mb-3">Log in</h1>
+  <form method="post" class="card card-body" novalidate>
+    {% csrf_token %}
+    {% if form.errors %}<div class="alert alert-danger">Wrong username or password. Try again.</div>{% endif %}
+    <div class="mb-3"><label class="form-label" for="id_username">Username</label>
+      <input type="text" name="username" id="id_username" class="form-control" autofocus required></div>
+    <div class="mb-3"><label class="form-label" for="id_password">Password</label>
+      <input type="password" name="password" id="id_password" class="form-control" required></div>
+    <button class="btn btn-primary w-100" type="submit">Log in</button>
+  </form>
+  <p class="text-center mt-3 small">No account yet? <a href="{% url 'register' %}">Register</a></p>
+</div></div>
+{% endblock %}
